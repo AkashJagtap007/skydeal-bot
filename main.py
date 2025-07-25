@@ -2,37 +2,37 @@ from telethon.sync import TelegramClient, events, Button
 import asyncio
 import re
 import threading
-from ping_server import app  # Flask app to keep Replit alive
+from ping_server import app  # Flask server to keep Railway container alive
 
 # === Telegram API Credentials ===
 api_id = 26429542
 api_hash = '6caf396bf1f8898478ce1d8bdb1b5a88'
 session_name = 'skydeal'
 
-# === Telegram Usernames ===
+# === Telegram Channels ===
 source_channels = ['realearnkaro', 'dealdost', 'skydeal_frostfibre']
 converter_bot = 'ekconverter20bot'
 destination_channel = 'SkyDeal247'
 
-# === Extract all links from message ===
+# === Extract all links from text ===
 def extract_all_valid_links(text):
     return re.findall(r'(https?://[^\s<>]+)', text)
 
-# === Setup Telegram client ===
+# === Telegram client ===
 client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage(chats=source_channels))
 async def convert_and_repost(event):
     text = event.raw_text or ""
 
-    # Avoid already processed messages
+    # Skip already processed messages
     if '🛒 Buy now ✅' in text:
-        print("⛔ Already processed. Skipping.")
+        print("⛔ Already processed.")
         return
 
     links = extract_all_valid_links(text)
     if not links:
-        print("⛔ No links found in message. Skipping.")
+        print("⛔ No links found.")
         return
 
     print(f"📥 Message from {event.chat.username or 'source'} with {len(links)} link(s)")
@@ -41,7 +41,7 @@ async def convert_and_repost(event):
     final_text = text
 
     try:
-        # Convert each link using the bot
+        # Convert links using the bot
         for link in links:
             print(f"🤖 Sending to @{converter_bot}: {link}")
             async with client.conversation(converter_bot, timeout=30) as conv:
@@ -51,18 +51,16 @@ async def convert_and_repost(event):
                 converted_links[link] = converted_link
                 print(f"✅ Converted: {link} → {converted_link}")
 
-        # Replace original links with converted ones
+        # Replace original links with converted links
         for original, converted in converted_links.items():
             final_text = final_text.replace(original, converted)
 
-        # Mark as processed
         final_text += "\n\n🛒 Buy now ✅"
 
-        # Use the first converted link for the Buy Now button
-        button_link = list(converted_links.values())[0]
-        button = [[Button.url("🔗 Buy Now", button_link)]]
+        # Create button with first converted link
+        button = [[Button.url("🛒 Buy Now", list(converted_links.values())[0])]]
 
-        # Check for media (photo, document, etc.)
+        # Send media + caption if photo exists
         if event.photo or event.document:
             await client.send_file(
                 destination_channel,
@@ -71,7 +69,7 @@ async def convert_and_repost(event):
                 buttons=button,
                 link_preview=False
             )
-            print("🖼️ Image + text posted to destination channel")
+            print("🖼️ Sent media with converted links.")
         else:
             await client.send_message(
                 destination_channel,
@@ -79,15 +77,15 @@ async def convert_and_repost(event):
                 buttons=button,
                 link_preview=False
             )
-            print("📝 Text-only message posted to destination channel")
+            print("📤 Sent text message with converted links.")
 
     except Exception as e:
-        print(f"❌ Error during processing: {e}")
+        print(f"❌ Error: {e}")
 
-# === Run both Flask and Telegram bot ===
+# === Start Flask and Telegram client ===
 async def start_bot():
     await client.start()
-    print("🚀 Bot is running and monitoring...")
+    print("🚀 Bot is running...")
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
