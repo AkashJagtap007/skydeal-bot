@@ -1,6 +1,2 @@
 telethon
-aiohttp
-selenium
-webdriver-manager
-python-dotenv
 flask
