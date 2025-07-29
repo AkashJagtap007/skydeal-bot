@@ -71,8 +71,7 @@ async def handle_message(event):
     text += "\n\n🛒 Buy now ✅"
     button = [[Button.url("🔗 Buy Now", list(converted_links.values())[0])]]
 
-    # ✅ Safe: always use send_message instead of send_file to avoid media errors
-    await client.send_message(destination_channel, text, buttons=button, link_preview=True)
+    await client.send_message(destination_channel, text, buttons=button, link_preview=False)
 
 @client.on(events.NewMessage(chats=destination_channel))
 async def delete_unwanted(event):
